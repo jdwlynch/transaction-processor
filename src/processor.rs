@@ -30,7 +30,9 @@ impl Processor {
                 }
                 Ok(mut tx) => {
                     trace!("[!] transaction parsed = {:?}", tx);
-                    if let Err(err) = Transaction::validate_transaction(tx.amount, &tx.tx_type) /*processor.check_transaction(&mut tx)*/ {
+                    if let Err(err) = Transaction::validate_transaction(tx.amount, &tx.tx_type)
+                    /*processor.check_transaction(&mut tx)*/
+                    {
                         error!("[!] Error validating transactions: {:?}", err);
                         continue;
                     }
@@ -59,13 +61,15 @@ impl Processor {
     }
 
     fn process_transaction(&mut self, client: &mut Client, mut transaction: Transaction) {
-
         match transaction.tx_type {
-            TxTypes::Deposit | TxTypes::Withdrawal=>{
-                if let Err(err) = self.handle_deposits_withdrawals(&transaction, client){
+            TxTypes::Deposit | TxTypes::Withdrawal => {
+                if let Err(err) = self.handle_deposits_withdrawals(&transaction, client) {
                     error!("[!] Error processing deposit or withdrawal: {}", err);
-                }else {
-                    debug!("Successful transaction. Inserting into ledger: {:?}", transaction);
+                } else {
+                    debug!(
+                        "Successful transaction. Inserting into ledger: {:?}",
+                        transaction
+                    );
                     self.ledger.insert(transaction.tx_id, transaction);
                 }
             }
@@ -75,6 +79,7 @@ impl Processor {
                     transaction.tx_type
                 );
                 //resolve and chargeback resolve disputed transactions
+                trace!("Type of transaction checked is: {:?}", transaction.tx_type);
                 let resolving = transaction.tx_type != TxTypes::Dispute;
                 trace!("Resolving found to be: {}", resolving);
                 if let Err(err) =
@@ -102,19 +107,19 @@ impl Processor {
         }
     }
 
-    fn validate_dispute_action(
-        &self,
+    fn get_disputed_transaction(
+        &mut self,
         client: &Client,
         tx_id: u32,
         resolving: bool,
-    ) -> Result<(), error::Error> {
-        match self.ledger.get(&tx_id) {
+    ) -> Result<&mut Transaction, error::Error> {
+        match self.ledger.get_mut(&tx_id) {
             Some(tx) => {
                 Processor::check_client_ids_match(tx.client, client.client)?;
                 Transaction::check_transaction_dispute_valid(resolving, tx.disputed)?;
                 Transaction::check_amount_is_valid(&tx.tx_type, tx.amount)?;
                 debug!("Dispute related transaction is valid");
-                Ok(())
+                Ok(tx)
             }
             None => Err(error::Error::Transaction(format!(
                 "Trying to dispute transaction {},\
@@ -124,12 +129,16 @@ impl Processor {
         }
     }
 
-    fn handle_deposits_withdrawals(&self, transaction : & Transaction, client: & mut Client) -> Result<(), error::Error>{
+    fn handle_deposits_withdrawals(
+        &self,
+        transaction: &Transaction,
+        client: &mut Client,
+    ) -> Result<(), error::Error> {
         if self.ledger.contains_key(&transaction.tx_id) {
             Err(error::Error::Transaction(String::from(
                 "Duplicate transaction",
             )))
-        }else {
+        } else {
             //Impossible as amount is checked in validators, so in the absence of a dto, use .expect.
             let amount = transaction
                 .amount
@@ -138,12 +147,12 @@ impl Processor {
                 TxTypes::Deposit => {
                     client.deposit(amount);
                     Ok(())
-                },
+                }
                 TxTypes::Withdrawal => {
                     if let Err(err) = client.withdraw(amount) {
                         error!("[!] Error withdrawing funds: {:?}", err);
                         Err(err)
-                    }else{
+                    } else {
                         Ok(())
                     }
                 }
@@ -156,41 +165,43 @@ impl Processor {
     }
 
     fn handle_disputed_transaction(
-        &self,
+        &mut self,
         client: &mut Client,
         transaction: &mut Transaction,
         resolving: bool,
     ) -> Result<(), error::Error> {
-        if let Err(err) = self.validate_dispute_action(client, transaction.tx_id, resolving) {
-            return Err(error::Error::Transaction(format!(
+        match self.get_disputed_transaction(client, transaction.tx_id, resolving) {
+            Err(err) => return Err(error::Error::Transaction(format!(
                 "Error validating dispute: {}",
                 err
-            )));
-        } else {
-            //Impossible as amount is checked in validators, so in the absence of a dto, use .expect.
-            let amount = transaction
-                .amount
-                .expect("System error, amount check failed.");
-            match transaction.tx_type {
-                TxTypes::Dispute => {
-                    client.dispute(amount);
-                    transaction.disputed = true;
-                }
-                TxTypes::Resolve => {
-                    client.resolve(amount);
-                    transaction.disputed = false;
-                }
-                TxTypes::Chargeback => {
-                    client.chargeback(amount);
-                    transaction.disputed = false;
-                }
-                //This function is called as a fall-through of transaction parser that handles
-                //all other cases. This should be impossible, and if reached is a critical bug.
-                _ => panic!(
-                    "System error, unreachable line. Non-dispute related transactions\
+            ))),
+            Ok(tx) => {
+                trace!("Found disputed transaction: {:?}", tx);
+                //Impossible as amount is checked in validators, so in the absence of a dto, use .expect.
+                let amount = tx
+                    .amount
+                    .expect("System error, amount check failed.");
+                match transaction.tx_type {
+                    TxTypes::Dispute => {
+                        client.dispute(amount);
+                        tx.disputed = true;
+                    }
+                    TxTypes::Resolve => {
+                        client.resolve(amount);
+                        tx.disputed = false;
+                    }
+                    TxTypes::Chargeback => {
+                        client.chargeback(amount);
+                        tx.disputed = false;
+                    }
+                    //This function is called as a fall-through of transaction parser that handles
+                    //all other cases. This should be impossible, and if reached is a critical bug.
+                    _ => panic!(
+                        "System error, unreachable line. Non-dispute related transactions\
                 must be handled before here."
-                ),
-            };
+                    ),
+                };
+            }
         }
         debug!("Dispute related transaction successfully handled");
         trace!("Dispute related transaction is: {:?}", transaction);
