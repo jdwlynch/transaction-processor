@@ -50,7 +50,7 @@ impl Transaction {
     fn validate_deposit_withdrawal_structure(amount: Option<d128>) -> Result<(), error::Error> {
         if let Some(tx_amount) = amount {
             if tx_amount < d128!(0) {
-                Err(error::Error::TransactionError(String::from(
+                Err(error::Error::Transaction(String::from(
                     "Amount must be a positive number",
                 )))
             } else {
@@ -61,15 +61,15 @@ impl Transaction {
                 Ok(())
             }
         } else {
-            Err(error::Error::TransactionError(String::from(
+            Err(error::Error::Transaction(String::from(
                 "Deposits and withdrawals require an amount.",
             )))
         }
     }
 
     fn validate_dispute_related_structure(amount: Option<d128>) -> Result<(), error::Error> {
-        if let Some(_) = amount {
-            Err(error::Error::TransactionError(String::from(
+        if amount.is_some() {
+            Err(error::Error::Transaction(String::from(
                 "Disputes, resolutions and \
                             chargebacks shouldn't have amounts",
             )))
@@ -79,12 +79,12 @@ impl Transaction {
         }
     }
 
-    pub fn check_transaction_dispute_compatible(
+    pub fn check_transaction_dispute_valid(
         tx_resolving: bool,
         ledger_disputed: bool,
     ) -> Result<(), error::Error> {
         if tx_resolving != ledger_disputed {
-            Err(error::Error::TransactionError(String::from(
+            Err(error::Error::Transaction(String::from(
                 "Cannot dispute a disputed transaction, \
                         or resolve an undisputed transaction.",
             )))
@@ -105,7 +105,7 @@ impl Transaction {
     ) -> Result<(), error::Error> {
         match tx_type {
             TxTypes::Deposit => {
-                if let Some(_) = amount {
+                if amount.is_some() {
                     debug!(
                         "A deposit is being disputed or resolved for a value of {:?}",
                         amount
@@ -119,7 +119,7 @@ impl Transaction {
                     );
                 }
             }
-            _ => Err(error::Error::TransactionError(format!(
+            _ => Err(error::Error::Transaction(format!(
                 "Trying to dispute or resolve a {:?}. \
                         Only Deposits are valid targets.",
                 tx_type

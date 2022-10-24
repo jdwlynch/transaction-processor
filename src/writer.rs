@@ -1,6 +1,6 @@
-use std::io;
-use log::trace;
 use crate::{error, Accounts};
+use log::trace;
+use std::io;
 
 pub fn write_accounts(accounts: &Accounts) -> Result<(), error::Error> {
     let mut wtr = csv::Writer::from_writer(io::stdout());

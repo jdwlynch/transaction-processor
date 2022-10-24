@@ -30,7 +30,7 @@ impl Processor {
                 }
                 Ok(mut tx) => {
                     trace!("[!] transaction parsed = {:?}", tx);
-                    if let Err(err) = processor.validate_transactions(&mut tx) {
+                    if let Err(err) = processor.check_transaction(&mut tx) {
                         error!("[!] Error validating transactions: {}", err);
                         continue;
                     }
@@ -47,20 +47,53 @@ impl Processor {
         }
     }
 
-    fn validate_transactions(&self, tx: &mut Transaction) -> Result<(), error::Error> {
+    fn check_transaction(&self, tx: &mut Transaction) -> Result<(), error::Error> {
         if self.ledger.contains_key(&tx.tx_id) {
-            return Err(error::Error::TransactionError(String::from(
+            Err(error::Error::Transaction(String::from(
                 "Duplicate transaction",
-            )));
+            )))
         } else {
             Transaction::validate_transaction(tx.amount, &tx.tx_type)?;
             Ok(())
         }
     }
 
+    fn process_transaction(&mut self, client: &mut Client, mut transaction: Transaction) {
+        //Impossible as amount is checked in validators, so in the absence of a dto, use .expect.
+        let amount = transaction
+            .amount
+            .expect("System error, amount check failed.");
+        match transaction.tx_type {
+            TxTypes::Deposit => client.deposit(amount),
+            TxTypes::Withdrawal => {
+                if let Err(err) = client.withdraw(amount) {
+                    error!("[!] Error withdrawing funds: {}", err);
+                    return;
+                }
+            }
+            TxTypes::Dispute | TxTypes::Resolve | TxTypes::Chargeback => {
+                debug!(
+                    "Found dispute related transaction: {:?}",
+                    transaction.tx_type
+                );
+                //resolve and chargeback resolve disputed transactions
+                let resolving = transaction.tx_type != TxTypes::Dispute;
+                trace!("Resolving found to be: {}", resolving);
+                if let Err(err) =
+                    self.handle_disputed_transaction(client, &mut transaction, resolving)
+                {
+                    error!("[!] Error handling a dispute related transaction: {}", err);
+                    return;
+                }
+            }
+        };
+        debug!("Successful transaction. Inserting into ledger: {:?}", transaction);
+        self.ledger.insert(transaction.tx_id, transaction);
+    }
+
     fn check_client_ids_match<T: Display + PartialEq>(id1: T, id2: T) -> Result<(), error::Error> {
         if id1 != id2 {
-            Err(error::Error::TransactionError(format!(
+            Err(error::Error::Transaction(format!(
                 "Client {} is trying to dispute a transaction belonging to client {}",
                 id1, id2
             )))
@@ -70,7 +103,7 @@ impl Processor {
         }
     }
 
-    fn validate_dispute(
+    fn validate_dispute_action(
         &self,
         client: &Client,
         tx_id: u32,
@@ -79,12 +112,12 @@ impl Processor {
         match self.ledger.get(&tx_id) {
             Some(tx) => {
                 Processor::check_client_ids_match(tx.client, client.client)?;
-                Transaction::check_transaction_dispute_compatible(resolving, tx.disputed)?;
+                Transaction::check_transaction_dispute_valid(resolving, tx.disputed)?;
                 Transaction::check_amount_is_valid(&tx.tx_type, tx.amount)?;
                 debug!("Dispute related transaction is valid");
                 Ok(())
             }
-            None => Err(error::Error::TransactionError(format!(
+            None => Err(error::Error::Transaction(format!(
                 "Trying to dispute transaction {},\
                 but that transaction does not exist",
                 tx_id
@@ -92,14 +125,14 @@ impl Processor {
         }
     }
 
-    fn process_disputed_transaction(
+    fn handle_disputed_transaction(
         &self,
         client: &mut Client,
         transaction: &mut Transaction,
         resolving: bool,
     ) -> Result<(), error::Error> {
-        if let Err(err) = self.validate_dispute(client, transaction.tx_id, resolving) {
-            return Err(error::Error::TransactionError(format!(
+        if let Err(err) = self.validate_dispute_action(client, transaction.tx_id, resolving) {
+            return Err(error::Error::Transaction(format!(
                 "Error validating dispute: {}",
                 err
             )));
@@ -132,37 +165,5 @@ impl Processor {
         debug!("Dispute related transaction successfully handled");
         trace!("Dispute related transaction is: {:?}", transaction);
         Ok(())
-    }
-
-    fn process_transaction(&mut self, client: &mut Client, mut transaction: Transaction) {
-        //Impossible as amount is checked in validators, so in the absence of a dto, use .expect.
-        let amount = transaction
-            .amount
-            .expect("System error, amount check failed.");
-        match transaction.tx_type {
-            TxTypes::Deposit => client.deposit(amount),
-            TxTypes::Withdrawal => {
-                if let Err(err) = client.withdraw(amount) {
-                    error!("[!] Error withdrawing funds: {}", err);
-                    return;
-                }
-            }
-            TxTypes::Dispute | TxTypes::Resolve | TxTypes::Chargeback => {
-                debug!(
-                    "Found dispute related transaction: {:?}",
-                    transaction.tx_type
-                );
-                let resolving = transaction.tx_type != TxTypes::Dispute;
-                trace!("Resolving found to be: {}", resolving);
-                if let Err(err) =
-                    self.process_disputed_transaction(client, &mut transaction, resolving)
-                {
-                    error!("[!] Error handling a dispute related transaction: {}", err);
-                    return;
-                }
-            }
-        };
-        debug!("Inserting transaction into ledger: {:?}", transaction);
-        self.ledger.insert(transaction.tx_id, transaction);
     }
 }

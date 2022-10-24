@@ -9,8 +9,7 @@ use crate::models::transaction;
 use crate::processor::Processor;
 use crate::transaction_feed::TransactionFeed;
 use crate::writer::write_accounts;
-use env_logger;
-use log::{debug, error, info, trace, warn};
+use log::error;
 use std::env;
 use std::ffi::OsString;
 

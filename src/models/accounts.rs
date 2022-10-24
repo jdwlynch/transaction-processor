@@ -16,15 +16,15 @@ impl Accounts {
         }
     }
     pub fn get_client(&mut self, id: u16) -> Result<&mut Client, error::Error> {
-        let client = self.clients.entry(id).or_insert(Client::new(id));
+        let client = self.clients.entry(id).or_insert_with(|| Client::new(id));
         if client.locked {
-            return Err(error::Error::AccountError(format!(
+            return Err(error::Error::Account(format!(
                 "Client {} is locked",
                 client.client
             )));
         } else {
             debug!("[!] Client {} returned from get_client", client.client);
-            return Ok(client);
+            Ok(client)
         }
     }
 }
@@ -69,7 +69,7 @@ impl Client {
             );
             Ok(())
         } else {
-            Err(error::Error::AccountError(format!(
+            Err(error::Error::Account(format!(
                 "Insufficient funds for client {}. \
                 {} requested, {} available",
                 self.client, amount, self.available
