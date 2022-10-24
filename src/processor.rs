@@ -10,18 +10,16 @@ use crate::transaction::{Transaction, TxTypes};
 #[derive(Default, Debug)]
 pub struct Processor {
     ledger: HashMap<u32, Transaction>,
-    accounts: Accounts
 }
 
 impl Processor {
     pub fn new() -> Result<Processor, error::Error> {
         Ok(Self{
             ledger: HashMap::new(),
-            accounts: Accounts::new()
         })
     }
 
-    pub fn process_transactions(mut consumer: TransactionFeed, mut clients: Accounts)
+    pub fn process_transactions(mut consumer: TransactionFeed, clients:&mut Accounts)
         -> Result<(), error::Error>{
         let mut processor = Self{
             ..Default::default()
@@ -30,14 +28,14 @@ impl Processor {
             let mut tx = transaction?;
             processor.validate_transaction(tx.tx_id, tx.amount, &tx.tx_type);
             let client = clients.get_client(tx.client).unwrap();
-            processor.process_transaction(client, &mut tx)?;
+            processor.process_transaction(client, &mut tx);
             processor.update_ledger(tx);
         }
         Ok(())
     }
 
-    fn update_ledger(&self, transaction: Transaction){
-
+    fn update_ledger(&mut self, transaction: Transaction){
+        self.ledger.insert(transaction.tx_id, transaction);
     }
 
     fn check_duplicate_transactions(&self, tx_id: u32)->Result<(), error::Error>{
@@ -126,7 +124,7 @@ impl Processor {
         ->Result<decimal::d128, error::Error> {
         match self.ledger.get_mut(&tx_id) {
             Some(tx) => {
-                Processor::check_client_ids_match(tx.client, client.id)?;
+                Processor::check_client_ids_match(tx.client, client.client)?;
                 Processor::check_transaction_dispute_compatible(resolving, tx.disputed)?;
                 Processor::check_amount_is_valid(&tx.tx_type, tx.amount)?;
                 Ok(tx.amount.unwrap())

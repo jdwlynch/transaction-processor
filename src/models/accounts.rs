@@ -1,19 +1,20 @@
 use decimal::d128;
 use std::collections::HashMap;
+use serde::Serialize;
 use crate::error;
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Serialize)]
 pub struct Client{
-    pub id: u16,
-    total: d128,
-    held: d128,
+    pub client: u16,
     available: d128,
+    held: d128,
+    total: d128,
     locked: bool,
 }
 
 #[derive(Default, Debug)]
 pub struct Accounts {
-    clients: HashMap<u16, Client>
+    pub clients: HashMap<u16, Client>
 }
 
 impl Accounts {
@@ -23,10 +24,10 @@ impl Accounts {
         }
     }
     pub fn get_client(&mut self, id: u16) -> Result<&mut Client, error::Error> {
-        let test = self.clients.entry(id).or_insert(Client::new());
+        let test = self.clients.entry(id).or_insert(Client::new(id));
         if test.locked {
             return Err(error::Error::AccountError(
-                format!("Client {} is locked", test.id))
+                format!("Client {} is locked", test.client))
             );
         } else {
             return Ok(test)
@@ -34,9 +35,9 @@ impl Accounts {
     }
 }
 impl Client {
-    pub fn new(/*id: u32*/) -> Self {
+    pub fn new(id: u16) -> Self {
         Self {
-            //id,
+            client: id,
             ..Default::default()
         }
     }
@@ -52,7 +53,7 @@ impl Client {
         }else {
             Err(error::Error::AccountError(
                 format!("Insufficient funds for client {}. \
-                {} requested, {} available", self.id, amount, self.available)
+                {} requested, {} available", self.client, amount, self.available)
             ))
         }
     }
@@ -63,7 +64,7 @@ impl Client {
     pub fn resolve(&mut self, amount: d128) {
         if self.held < amount{
             panic!("System error on client {}. Trying to resolve but amount: {}\
-            is greater than the value of held funds: {}", self.id, amount, self.held)
+            is greater than the value of held funds: {}", self.client, amount, self.held)
         }
         self.available += amount;
         self.held -= amount;
@@ -71,7 +72,7 @@ impl Client {
     pub fn chargeback(&mut self, amount: d128){
         if self.held < amount{
             panic!("System error on client {}. Trying to chargeback but amount: {}\
-            is greater than the value of held funds: {}", self.id, amount, self.held)
+            is greater than the value of held funds: {}", self.client, amount, self.held)
         }else {
             self.available -= amount;
             self.held -= amount;

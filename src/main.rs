@@ -9,6 +9,8 @@ use crate::transaction_feed::TransactionFeed;
 use crate::models::transaction;
 use crate::models::accounts::{Accounts};
 use crate::processor::Processor;
+use crate::writer::write_accounts;
+
 
 fn main() -> Result<(), error::Error> {
 /*    if let Err(err) = example() {
@@ -16,7 +18,8 @@ fn main() -> Result<(), error::Error> {
         process::exit(1);
     }*/
     let cons = TransactionFeed::new()?;
-    let clients = Accounts::new();
-    let result = Processor::process_transactions(cons, clients);
+    let mut accounts = Accounts::new();
+    let result = Processor::process_transactions(cons, &mut accounts);
+    write_accounts(&accounts);
     result
 }
