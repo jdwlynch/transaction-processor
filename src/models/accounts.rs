@@ -115,7 +115,7 @@ impl Client {
                 self.client, amount, self.held
             )
         } else {
-            self.available -= amount;
+            self.total -= amount;
             self.held -= amount;
             self.locked = true;
         }
