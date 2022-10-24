@@ -1,25 +1,35 @@
-
+mod error;
 mod models;
+pub mod processor;
 mod transaction_feed;
 mod writer;
-mod error;
-pub mod processor;
 
-use crate::transaction_feed::TransactionFeed;
+use std::process;
+use crate::models::accounts::Accounts;
 use crate::models::transaction;
-use crate::models::accounts::{Accounts};
 use crate::processor::Processor;
+use crate::transaction_feed::TransactionFeed;
 use crate::writer::write_accounts;
-
+use env_logger;
+use log::{error, warn, info, debug, trace};
 
 fn main() -> Result<(), error::Error> {
-/*    if let Err(err) = example() {
-        println!("error running example: {}", err);
-        process::exit(1);
-    }*/
-    let cons = TransactionFeed::new()?;
+    env_logger::init();
+    let transaction_feed = match TransactionFeed::new(){
+        Err(err) => {
+            error!("[!] Fatal error opening transaction feed: {}", err);
+            return Err(err);
+        },
+        Ok(transaction_feed) => transaction_feed
+    };
+
     let mut accounts = Accounts::new();
-    let result = Processor::process_transactions(cons, &mut accounts);
-    write_accounts(&accounts);
-    result
+
+    Processor::handle_transactions(transaction_feed, &mut accounts);
+
+    if let Err(err) = write_accounts(&accounts){
+        error!("[!] Fatal error writing transactions: {}", err);
+        return Err(err);
+    }
+    Ok(())
 }

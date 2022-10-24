@@ -7,5 +7,9 @@ pub enum Error {
     #[error("Transaction Error: {0}")]
     TransactionError(String),
     #[error("Account Error: {0}")]
-    AccountError(String)
+    AccountError(String),
+    #[error("IO Error")]
+    IoError(#[from] std::io::Error),
 }
+
+//pub type Result<T> = result::Result<T, Error>;
