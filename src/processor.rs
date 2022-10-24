@@ -4,6 +4,7 @@ use std::fmt::Display;
 use crate::models::accounts::{Accounts, Client};
 use crate::transaction::{Transaction, TxTypes};
 use crate::{error, TransactionFeed};
+use log::{debug, trace};
 
 #[derive(Default, Debug)]
 pub struct Processor {
@@ -17,22 +18,20 @@ impl Processor {
         }
     }
 
-    pub fn handle_transactions(
-        consumer: TransactionFeed,
-        clients: &mut Accounts)
-    {
+    pub fn handle_transactions(consumer: TransactionFeed, clients: &mut Accounts) {
         let mut processor = Self {
             ..Default::default()
         };
         for transaction in consumer {
             match transaction {
                 Err(err) => {
-                    //log error
+                    error!("[!] Error parsing transaction: {}", err);
                     break;
                 }
                 Ok(mut tx) => {
+                    trace!("[!] transaction parsed = {:?}", tx);
                     if let Err(err) = processor.validate_transactions(&mut tx) {
-                        //log error
+                        error!("[!] Error validating transactions: {}", err);
                         break;
                     }
                     match clients.get_client(tx.client) {
@@ -40,7 +39,7 @@ impl Processor {
                             processor.process_transaction(client, tx);
                         }
                         Err(err) => {
-                            //log error
+                            error!("[!] Error getting client: {}", err);
                         }
                     }
                 }
@@ -66,6 +65,7 @@ impl Processor {
                 id1, id2
             )))
         } else {
+            debug!("Client ids {} and {} match.", id1, id2);
             Ok(())
         }
     }
@@ -81,6 +81,7 @@ impl Processor {
                 Processor::check_client_ids_match(tx.client, client.client)?;
                 Transaction::check_transaction_dispute_compatible(resolving, tx.disputed)?;
                 Transaction::check_amount_is_valid(&tx.tx_type, tx.amount)?;
+                debug!("Dispute related transaction is valid");
                 Ok(())
             }
             None => Err(error::Error::TransactionError(format!(
@@ -103,6 +104,7 @@ impl Processor {
                 err
             )));
         } else {
+            //Impossible as amount is checked in validators, so in the absence of a dto, use .expect.
             let amount = transaction
                 .amount
                 .expect("System error, amount check failed.");
@@ -119,39 +121,43 @@ impl Processor {
                     client.chargeback(amount);
                     transaction.disputed = false;
                 }
-                _ => (),
+                //This function is called as a fall-through of transaction parser that handles
+                //all other cases. This should be impossible, and if reached is a critical bug.
+                _ => panic!("System error, unreachable line. Non-dispute related transactions\
+                must be handled before here."),
             };
         }
+        debug!("Dispute related transaction successfully handled");
+        trace!("Dispute related transaction is: {:?}", transaction);
         Ok(())
     }
 
     fn process_transaction(&mut self, client: &mut Client, mut transaction: Transaction) {
+        //Impossible as amount is checked in validators, so in the absence of a dto, use .expect.
+        let amount = transaction
+            .amount
+            .expect("System error, amount check failed.");
         match transaction.tx_type {
-            TxTypes::Deposit => client.deposit(
-                transaction
-                    .amount
-                    .expect("System error, deposit called with no amount present."),
-            ),
+            TxTypes::Deposit => client.deposit(amount),
             TxTypes::Withdrawal => {
-                if let Err(err) = client.withdraw(
-                    transaction
-                        .amount
-                        .expect("System error, withdrawal called with no amount present."),
-                ) {
-                    //log error
+                if let Err(err) = client.withdraw(amount) {
+                    error!("[!] Error withdrawing funds: {}", err);
                     return;
                 }
             }
             TxTypes::Dispute | TxTypes::Resolve | TxTypes::Chargeback => {
+                debug!("Found dispute related transaction: {:?}", transaction.tx_type);
                 let resolving = transaction.tx_type != TxTypes::Dispute;
+                trace!("Resolving found to be: {}", resolving);
                 if let Err(err) =
                     self.process_disputed_transaction(client, &mut transaction, resolving)
                 {
-                    //log error
+                    error!("[!] Error handling a dispute related transaction: {}", err);
                     return;
                 }
             }
         };
+        debug!("Inserting transaction into ledger: {:?}", transaction);
         self.ledger.insert(transaction.tx_id, transaction);
     }
 }

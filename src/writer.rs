@@ -7,7 +7,8 @@ pub fn write_accounts(accounts: &Accounts) -> Result<(), error::Error> {
 
     // When writing records with Serde using structs, the header row is written
     // automatically.
-    for (_client_id, client_record) in &accounts.clients {
+    for (client_id, client_record) in &accounts.clients {
+        trace!("Writing record for client #{}", client_id);
         wtr.serialize(client_record)?;
     }
     wtr.flush()?;
