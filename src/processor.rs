@@ -25,13 +25,13 @@ impl Processor {
         for transaction in consumer {
             match transaction {
                 Err(err) => {
-                    error!("[!] Error parsing transaction: {}", err);
+                    error!("[!] Error parsing transaction: {:?}", err);
                     continue;
                 }
                 Ok(mut tx) => {
                     trace!("[!] transaction parsed = {:?}", tx);
                     if let Err(err) = processor.check_transaction(&mut tx) {
-                        error!("[!] Error validating transactions: {}", err);
+                        error!("[!] Error validating transactions: {:?}", err);
                         continue;
                     }
                     match clients.get_client(tx.client) {
@@ -39,7 +39,7 @@ impl Processor {
                             processor.process_transaction(client, tx);
                         }
                         Err(err) => {
-                            error!("[!] Error getting client: {}", err);
+                            error!("[!] Error getting client: {:?}", err);
                         }
                     }
                 }
@@ -67,7 +67,7 @@ impl Processor {
             TxTypes::Deposit => client.deposit(amount),
             TxTypes::Withdrawal => {
                 if let Err(err) = client.withdraw(amount) {
-                    error!("[!] Error withdrawing funds: {}", err);
+                    error!("[!] Error withdrawing funds: {:?}", err);
                     return;
                 }
             }
@@ -82,7 +82,10 @@ impl Processor {
                 if let Err(err) =
                     self.handle_disputed_transaction(client, &mut transaction, resolving)
                 {
-                    error!("[!] Error handling a dispute related transaction: {}", err);
+                    error!(
+                        "[!] Error handling a dispute related transaction: {:?}",
+                        err
+                    );
                     return;
                 }
             }

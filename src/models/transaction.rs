@@ -4,6 +4,7 @@ use log::{debug, trace};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
 pub enum TxTypes {
     Deposit,
     Withdrawal,
@@ -13,6 +14,7 @@ pub enum TxTypes {
 }
 
 #[derive(Debug, Deserialize)]
+//#[serde(rename_all = "PascalCase")]
 pub struct Transaction {
     #[serde(rename = "type")]
     pub tx_type: TxTypes,

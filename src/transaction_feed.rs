@@ -1,6 +1,6 @@
 use crate::error;
 use crate::transaction::Transaction;
-use csv::DeserializeRecordsIntoIter;
+use csv::{DeserializeRecordsIntoIter, Trim};
 use std::ffi::OsString;
 use std::fs::File;
 
@@ -10,7 +10,9 @@ pub struct TransactionFeed {
 
 impl TransactionFeed {
     pub fn new(file_path: OsString) -> Result<TransactionFeed, error::Error> {
-        let rdr = csv::Reader::from_path(file_path)?;
+        let rdr = csv::ReaderBuilder::new()
+            .trim(Trim::All)
+            .from_path(file_path)?;
         Ok(Self {
             iter: rdr.into_deserialize(),
         })

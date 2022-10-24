@@ -25,7 +25,7 @@ fn get_first_arg() -> Result<OsString, error::Error> {
 fn get_transaction_feed() -> Result<TransactionFeed, error::Error> {
     let file_path = match get_first_arg() {
         Err(err) => {
-            error!("[!] Fatal error parsing command line args: {}", err);
+            error!("[!] Fatal error parsing command line args: {:?}", err);
             return Err(err);
         }
         Ok(file_path) => file_path,
@@ -37,7 +37,7 @@ fn main() -> Result<(), error::Error> {
     env_logger::init();
     let transaction_feed = match get_transaction_feed() {
         Err(err) => {
-            error!("[!] Fatal error opening transaction feed: {}", err);
+            error!("[!] Fatal error opening transaction feed: {:?}", err);
             return Err(err);
         }
         Ok(transaction_feed) => transaction_feed,
@@ -48,7 +48,7 @@ fn main() -> Result<(), error::Error> {
     Processor::handle_transactions(transaction_feed, &mut accounts);
 
     if let Err(err) = write_accounts(&accounts) {
-        error!("[!] Fatal error writing transactions: {}", err);
+        error!("[!] Fatal error writing transactions: {:?}", err);
         return Err(err);
     }
     Ok(())
