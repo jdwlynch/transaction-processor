@@ -1,5 +1,5 @@
 use std::io;
-
+use log::trace;
 use crate::{error, Accounts};
 
 pub fn write_accounts(accounts: &Accounts) -> Result<(), error::Error> {

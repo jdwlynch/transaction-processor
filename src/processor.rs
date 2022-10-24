@@ -26,13 +26,13 @@ impl Processor {
             match transaction {
                 Err(err) => {
                     error!("[!] Error parsing transaction: {}", err);
-                    break;
+                    continue;
                 }
                 Ok(mut tx) => {
                     trace!("[!] transaction parsed = {:?}", tx);
                     if let Err(err) = processor.validate_transactions(&mut tx) {
                         error!("[!] Error validating transactions: {}", err);
-                        break;
+                        continue;
                     }
                     match clients.get_client(tx.client) {
                         Ok(client) => {
