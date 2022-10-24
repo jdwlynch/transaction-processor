@@ -123,8 +123,10 @@ impl Processor {
                 }
                 //This function is called as a fall-through of transaction parser that handles
                 //all other cases. This should be impossible, and if reached is a critical bug.
-                _ => panic!("System error, unreachable line. Non-dispute related transactions\
-                must be handled before here."),
+                _ => panic!(
+                    "System error, unreachable line. Non-dispute related transactions\
+                must be handled before here."
+                ),
             };
         }
         debug!("Dispute related transaction successfully handled");
@@ -146,7 +148,10 @@ impl Processor {
                 }
             }
             TxTypes::Dispute | TxTypes::Resolve | TxTypes::Chargeback => {
-                debug!("Found dispute related transaction: {:?}", transaction.tx_type);
+                debug!(
+                    "Found dispute related transaction: {:?}",
+                    transaction.tx_type
+                );
                 let resolving = transaction.tx_type != TxTypes::Dispute;
                 trace!("Resolving found to be: {}", resolving);
                 if let Err(err) =

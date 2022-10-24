@@ -1,7 +1,7 @@
 use crate::error;
 use decimal::d128;
-use serde::Deserialize;
 use log::{debug, trace};
+use serde::Deserialize;
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub enum TxTypes {
@@ -25,16 +25,25 @@ pub struct Transaction {
 }
 
 impl Transaction {
-    pub fn validate_transaction(amount: Option<d128>, tx_type: &TxTypes) -> Result<(), error::Error> {
+    pub fn validate_transaction(
+        amount: Option<d128>,
+        tx_type: &TxTypes,
+    ) -> Result<(), error::Error> {
         match tx_type {
             TxTypes::Deposit | TxTypes::Withdrawal => {
-                trace!("Deposit or withdrawal detected, calling validate: {:?}", tx_type);
+                trace!(
+                    "Deposit or withdrawal detected, calling validate: {:?}",
+                    tx_type
+                );
                 Self::validate_deposit_withdrawal_structure(amount)
             }
             _ => {
-                trace!("Dispute related transaction detected, calling validate: {:?}", tx_type);
+                trace!(
+                    "Dispute related transaction detected, calling validate: {:?}",
+                    tx_type
+                );
                 Self::validate_dispute_related_structure(amount)
-            },
+            }
         }
     }
 
@@ -45,7 +54,10 @@ impl Transaction {
                     "Amount must be a positive number",
                 )))
             } else {
-                trace!("withdrawal or deposit of {:?} successfully validated.", amount);
+                trace!(
+                    "withdrawal or deposit of {:?} successfully validated.",
+                    amount
+                );
                 Ok(())
             }
         } else {
@@ -77,8 +89,12 @@ impl Transaction {
                         or resolve an undisputed transaction.",
             )))
         } else {
-            trace!("Dispute related transaction ok. The targeted transaction disputed = {} \
-            and the new transaction has resolving = {}", ledger_disputed, tx_resolving);
+            trace!(
+                "Dispute related transaction ok. The targeted transaction disputed = {} \
+            and the new transaction has resolving = {}",
+                ledger_disputed,
+                tx_resolving
+            );
             Ok(())
         }
     }
@@ -90,7 +106,10 @@ impl Transaction {
         match tx_type {
             TxTypes::Deposit => {
                 if let Some(_) = amount {
-                    debug!("A deposit is being disputed or resolved for a value of {:?}", amount);
+                    debug!(
+                        "A deposit is being disputed or resolved for a value of {:?}",
+                        amount
+                    );
                     Ok(())
                 } else {
                     //This should be impossible. The ledger is malfunctioning, so the system can't be trusted
