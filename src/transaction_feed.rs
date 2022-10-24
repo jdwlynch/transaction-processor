@@ -21,8 +21,6 @@ impl Iterator for TransactionFeed {
     type Item = Result<Transaction, error::Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter
-            .next()
-            .map(|e| e.map_err(error::Error::Csv))
+        self.iter.next().map(|e| e.map_err(error::Error::Csv))
     }
 }

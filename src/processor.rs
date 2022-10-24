@@ -87,7 +87,10 @@ impl Processor {
                 }
             }
         };
-        debug!("Successful transaction. Inserting into ledger: {:?}", transaction);
+        debug!(
+            "Successful transaction. Inserting into ledger: {:?}",
+            transaction
+        );
         self.ledger.insert(transaction.tx_id, transaction);
     }
 
