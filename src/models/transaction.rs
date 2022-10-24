@@ -14,7 +14,7 @@ pub enum TxTypes {
 }
 
 #[derive(Debug, Deserialize)]
-//#[serde(rename_all = "PascalCase")]
+#[serde(rename_all = "lowercase")]
 pub struct Transaction {
     #[serde(rename = "type")]
     pub tx_type: TxTypes,

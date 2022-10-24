@@ -30,7 +30,7 @@ impl Processor {
                 }
                 Ok(mut tx) => {
                     trace!("[!] transaction parsed = {:?}", tx);
-                    if let Err(err) = processor.check_transaction(&mut tx) {
+                    if let Err(err) = Transaction::validate_transaction(tx.amount, &tx.tx_type) /*processor.check_transaction(&mut tx)*/ {
                         error!("[!] Error validating transactions: {:?}", err);
                         continue;
                     }
@@ -53,22 +53,20 @@ impl Processor {
                 "Duplicate transaction",
             )))
         } else {
-            Transaction::validate_transaction(tx.amount, &tx.tx_type)?;
+            Transaction::validate_transaction(tx.amount, &tx.tx_type);
             Ok(())
         }
     }
 
     fn process_transaction(&mut self, client: &mut Client, mut transaction: Transaction) {
-        //Impossible as amount is checked in validators, so in the absence of a dto, use .expect.
-        let amount = transaction
-            .amount
-            .expect("System error, amount check failed.");
+
         match transaction.tx_type {
-            TxTypes::Deposit => client.deposit(amount),
-            TxTypes::Withdrawal => {
-                if let Err(err) = client.withdraw(amount) {
-                    error!("[!] Error withdrawing funds: {:?}", err);
-                    return;
+            TxTypes::Deposit | TxTypes::Withdrawal=>{
+                if let Err(err) = self.handle_deposits_withdrawals(&transaction, client){
+                    error!("[!] Error processing deposit or withdrawal: {}", err);
+                }else {
+                    debug!("Successful transaction. Inserting into ledger: {:?}", transaction);
+                    self.ledger.insert(transaction.tx_id, transaction);
                 }
             }
             TxTypes::Dispute | TxTypes::Resolve | TxTypes::Chargeback => {
@@ -90,11 +88,6 @@ impl Processor {
                 }
             }
         };
-        debug!(
-            "Successful transaction. Inserting into ledger: {:?}",
-            transaction
-        );
-        self.ledger.insert(transaction.tx_id, transaction);
     }
 
     fn check_client_ids_match<T: Display + PartialEq>(id1: T, id2: T) -> Result<(), error::Error> {
@@ -128,6 +121,37 @@ impl Processor {
                 but that transaction does not exist",
                 tx_id
             ))),
+        }
+    }
+
+    fn handle_deposits_withdrawals(&self, transaction : & Transaction, client: & mut Client) -> Result<(), error::Error>{
+        if self.ledger.contains_key(&transaction.tx_id) {
+            Err(error::Error::Transaction(String::from(
+                "Duplicate transaction",
+            )))
+        }else {
+            //Impossible as amount is checked in validators, so in the absence of a dto, use .expect.
+            let amount = transaction
+                .amount
+                .expect("System error, amount check failed.");
+            match transaction.tx_type {
+                TxTypes::Deposit => {
+                    client.deposit(amount);
+                    Ok(())
+                },
+                TxTypes::Withdrawal => {
+                    if let Err(err) = client.withdraw(amount) {
+                        error!("[!] Error withdrawing funds: {:?}", err);
+                        Err(err)
+                    }else{
+                        Ok(())
+                    }
+                }
+                _ => panic!(
+                    "System error, unreachable line. Non-dispute related transactions\
+                must be handled before here."
+                ),
+            }
         }
     }
 

@@ -11,6 +11,7 @@ pub struct TransactionFeed {
 impl TransactionFeed {
     pub fn new(file_path: OsString) -> Result<TransactionFeed, error::Error> {
         let rdr = csv::ReaderBuilder::new()
+            .flexible(true)
             .trim(Trim::All)
             .from_path(file_path)?;
         Ok(Self {
