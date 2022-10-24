@@ -7,10 +7,11 @@ use csv::{DeserializeRecordsIntoIter, DeserializeRecordsIter};
 use serde::de::DeserializeOwned;
 use serde::ser::StdError;
 use crate::models::engine::Transaction;
+use crate::error;
 
 /// Returns the first positional argument sent to this process. If there are no
 /// positional arguments, then this returns an error.
-fn get_first_arg() -> Result<OsString, Box<dyn Error>> {
+fn get_first_arg() -> Result<OsString, error::Error> {
     match env::args_os().nth(1) {
         None => Err(From::from("expected 1 argument, but got none")),
         Some(file_path) => Ok(file_path),
@@ -22,7 +23,7 @@ pub struct Consumer{
 }
 
 impl Consumer{
-    pub fn new() -> Result<Consumer, Box<dyn Error>> {
+    pub fn new() -> Result<Consumer, error::Error> {
         let file_path = get_first_arg()?;
         let mut rdr = csv::Reader::from_path(file_path)?;
         Ok(Self{

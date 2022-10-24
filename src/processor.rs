@@ -4,8 +4,8 @@ use decimal::d128;
 use std::collections::HashMap;
 use std::error::Error;
 
-use crate::Consumer;
-use crate::models::manager::{Client, Manager};
+use crate::TransactionFeed;
+use crate::models::accounts::{Client, Accounts};
 
 #[derive(Debug, Deserialize)]
 enum TxTypes {
@@ -29,21 +29,21 @@ pub struct Transaction{
 }
 
 //#[derive(Default)]
-pub struct Engine{
+pub struct Processor {
     ledger: HashMap<u32, Transaction>,
-    clients: Manager
+    clients: Accounts
 }
 
-impl Engine{
-    pub fn new() -> Result<Engine, Box<dyn Error>> {
+impl Processor {
+    pub fn new() -> Result<Processor, Box<dyn Error>> {
         Ok(Self{
             ledger: HashMap::new(),
-            clients: Manager::new()
+            clients: Accounts::new()
         })
     }
 
-    pub fn process_transactions(mut consumer: Consumer, mut clients: Manager){
-        let mut engine = Engine::new().unwrap();
+    pub fn process_transactions(mut consumer: TransactionFeed, mut clients: Accounts){
+        let mut engine = Processor::new().unwrap();
         for transaction in  consumer.borrow_mut() {
             let mut tx = transaction.unwrap();
             engine.validate_transaction(tx.tx_id);

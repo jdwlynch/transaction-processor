@@ -48,7 +48,7 @@ impl Client {
             self.available -= amount;
             println!("Withdrew money. Balance = {}", self.available);
         }else {
-            println!("Insufficient Funds");
+            println!("Insufficient Funds.\nRequested: {}, Available: {}", amount, self.available);
         }
     }
     pub fn dispute(&mut self, amount: d128){
