@@ -1,7 +1,7 @@
 use crate::error;
+use log::{debug, trace};
 use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
-use log::{debug, trace};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -29,7 +29,7 @@ pub struct Transaction {
 
 impl Transaction {
     pub fn validate_transaction(
-        amount: & mut Option<Decimal>,
+        amount: &mut Option<Decimal>,
         tx_type: &TxTypes,
     ) -> Result<(), error::Error> {
         match tx_type {
@@ -50,7 +50,9 @@ impl Transaction {
         }
     }
 
-    fn validate_deposit_withdrawal_structure(amount: &mut Option<Decimal>) -> Result<(), error::Error> {
+    fn validate_deposit_withdrawal_structure(
+        amount: &mut Option<Decimal>,
+    ) -> Result<(), error::Error> {
         if let Some(tx_amount) = amount {
             if tx_amount < &mut dec!(0) {
                 Err(error::Error::Transaction(String::from(
@@ -71,7 +73,9 @@ impl Transaction {
         }
     }
 
-    fn validate_dispute_related_structure(amount: &mut Option<Decimal>) -> Result<(), error::Error> {
+    fn validate_dispute_related_structure(
+        amount: &mut Option<Decimal>,
+    ) -> Result<(), error::Error> {
         if amount.is_some() {
             Err(error::Error::Transaction(String::from(
                 "Disputes, resolutions and \

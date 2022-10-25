@@ -1,7 +1,6 @@
 use crate::error;
-use rust_decimal_macros::dec;
-use rust_decimal::prelude::*;
 use log::{debug, trace};
+use rust_decimal::prelude::*;
 use serde::Serialize;
 use std::collections::HashMap;
 
@@ -47,7 +46,6 @@ impl Client {
         }
     }
     pub fn deposit(&mut self, amount: Decimal) {
-        let x = Decimal::new(1, 1);
         self.total += amount;
         self.available += amount;
         trace!(
