@@ -1,5 +1,6 @@
 use crate::error;
-use decimal::d128;
+use rust_decimal::prelude::*;
+use rust_decimal_macros::dec;
 use log::{debug, trace};
 use serde::Deserialize;
 
@@ -21,14 +22,14 @@ pub struct Transaction {
     pub client: u16,
     #[serde(rename = "tx")]
     pub tx_id: u32,
-    pub amount: Option<d128>,
+    pub amount: Option<Decimal>,
     #[serde(skip)]
     pub disputed: bool,
 }
 
 impl Transaction {
     pub fn validate_transaction(
-        amount: Option<d128>,
+        amount: & mut Option<Decimal>,
         tx_type: &TxTypes,
     ) -> Result<(), error::Error> {
         match tx_type {
@@ -49,13 +50,14 @@ impl Transaction {
         }
     }
 
-    fn validate_deposit_withdrawal_structure(amount: Option<d128>) -> Result<(), error::Error> {
+    fn validate_deposit_withdrawal_structure(amount: &mut Option<Decimal>) -> Result<(), error::Error> {
         if let Some(tx_amount) = amount {
-            if tx_amount < d128!(0) {
+            if tx_amount < &mut dec!(0) {
                 Err(error::Error::Transaction(String::from(
                     "Amount must be a positive number",
                 )))
             } else {
+                *amount = Some(tx_amount.round_dp(4));
                 trace!(
                     "withdrawal or deposit of {:?} successfully validated.",
                     amount
@@ -69,7 +71,7 @@ impl Transaction {
         }
     }
 
-    fn validate_dispute_related_structure(amount: Option<d128>) -> Result<(), error::Error> {
+    fn validate_dispute_related_structure(amount: &mut Option<Decimal>) -> Result<(), error::Error> {
         if amount.is_some() {
             Err(error::Error::Transaction(String::from(
                 "Disputes, resolutions and \
@@ -103,7 +105,7 @@ impl Transaction {
 
     pub fn check_amount_is_valid(
         tx_type: &TxTypes,
-        amount: Option<d128>,
+        amount: Option<Decimal>,
     ) -> Result<(), error::Error> {
         match tx_type {
             TxTypes::Deposit => {

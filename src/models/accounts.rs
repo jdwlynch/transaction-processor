@@ -1,5 +1,6 @@
 use crate::error;
-use decimal::d128;
+use rust_decimal_macros::dec;
+use rust_decimal::prelude::*;
 use log::{debug, trace};
 use serde::Serialize;
 use std::collections::HashMap;
@@ -32,9 +33,9 @@ impl Accounts {
 #[derive(Default, Debug, Serialize)]
 pub struct Client {
     pub client: u16,
-    available: d128,
-    held: d128,
-    total: d128,
+    available: Decimal,
+    held: Decimal,
+    total: Decimal,
     locked: bool,
 }
 
@@ -45,7 +46,8 @@ impl Client {
             ..Default::default()
         }
     }
-    pub fn deposit(&mut self, amount: d128) {
+    pub fn deposit(&mut self, amount: Decimal) {
+        let x = Decimal::new(1, 1);
         self.total += amount;
         self.available += amount;
         trace!(
@@ -56,7 +58,7 @@ impl Client {
             self.available
         );
     }
-    pub fn withdraw(&mut self, amount: d128) -> Result<(), error::Error> {
+    pub fn withdraw(&mut self, amount: Decimal) -> Result<(), error::Error> {
         if amount <= self.available {
             self.total -= amount;
             self.available -= amount;
@@ -76,7 +78,7 @@ impl Client {
             )))
         }
     }
-    pub fn dispute(&mut self, amount: d128) {
+    pub fn dispute(&mut self, amount: Decimal) {
         self.available -= amount;
         self.held += amount;
         trace!(
@@ -87,7 +89,7 @@ impl Client {
             self.held
         );
     }
-    pub fn resolve(&mut self, amount: d128) {
+    pub fn resolve(&mut self, amount: Decimal) {
         if self.held < amount {
             //This should be impossible. The ledger is malfunctioning, so the system can't be trusted
             panic!(
@@ -106,7 +108,7 @@ impl Client {
             self.held
         );
     }
-    pub fn chargeback(&mut self, amount: d128) {
+    pub fn chargeback(&mut self, amount: Decimal) {
         if self.held < amount {
             //This should be impossible. The ledger is malfunctioning, so the system can't be trusted
             panic!(

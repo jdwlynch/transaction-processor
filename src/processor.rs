@@ -5,6 +5,7 @@ use crate::models::accounts::{Accounts, Client};
 use crate::transaction::{Transaction, TxTypes};
 use crate::{error, TransactionFeed};
 use log::{debug, trace};
+use rust_decimal::Decimal;
 
 #[derive(Default, Debug)]
 pub struct Processor {
@@ -30,7 +31,7 @@ impl Processor {
                 }
                 Ok(mut tx) => {
                     trace!("[!] transaction parsed = {:?}", tx);
-                    if let Err(err) = Transaction::validate_transaction(tx.amount, &tx.tx_type)
+                    if let Err(err) = Transaction::validate_transaction(& mut tx.amount, &tx.tx_type)
                     /*processor.check_transaction(&mut tx)*/
                     {
                         error!("[!] Error validating transactions: {:?}", err);
@@ -55,7 +56,7 @@ impl Processor {
                 "Duplicate transaction",
             )))
         } else {
-            Transaction::validate_transaction(tx.amount, &tx.tx_type);
+            Transaction::validate_transaction(& mut tx.amount, &tx.tx_type);
             Ok(())
         }
     }
@@ -63,7 +64,7 @@ impl Processor {
     fn process_transaction(&mut self, client: &mut Client, mut transaction: Transaction) {
         match transaction.tx_type {
             TxTypes::Deposit | TxTypes::Withdrawal => {
-                if let Err(err) = self.handle_deposits_withdrawals(&transaction, client) {
+                if let Err(err) = self.handle_deposits_withdrawals(& mut transaction, client) {
                     error!("[!] Error processing deposit or withdrawal: {}", err);
                 } else {
                     debug!(
@@ -131,7 +132,7 @@ impl Processor {
 
     fn handle_deposits_withdrawals(
         &self,
-        transaction: &Transaction,
+        transaction: &mut Transaction,
         client: &mut Client,
     ) -> Result<(), error::Error> {
         if self.ledger.contains_key(&transaction.tx_id) {
@@ -142,7 +143,8 @@ impl Processor {
             //Impossible as amount is checked in validators, so in the absence of a dto, use .expect.
             let amount = transaction
                 .amount
-                .expect("System error, amount check failed.");
+                .expect("System error, amount check failed.").round_dp(4);
+            trace!("Amount is : {}, and Tx amount is: {}", amount, transaction.amount.unwrap());
             match transaction.tx_type {
                 TxTypes::Deposit => {
                     client.deposit(amount);
