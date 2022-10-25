@@ -69,8 +69,8 @@ impl Processor {
     fn check_client_ids_match<T: Display + PartialEq>(id1: T, id2: T) -> Result<(), error::Error> {
         if id1 != id2 {
             Err(error::Error::Transaction(format!(
-                "Client {} is trying to dispute a transaction belonging to client {}",
-                id1, id2
+                "Client {} is trying to action a transaction belonging to client {}",
+                id2, id1
             )))
         } else {
             debug!("Client ids {} and {} match.", id1, id2);
@@ -88,7 +88,7 @@ impl Processor {
                 Ok(tx)
             }
             None => Err(error::Error::Transaction(format!(
-                "Trying to dispute transaction {},\
+                "Trying to action transaction {},\
                 but that transaction does not exist",
                 tx_id
             ))),
