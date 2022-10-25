@@ -1,22 +1,39 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 
-use crate::models::accounts::{Accounts, Client};
+use crate::client_repo::ClientRepo;
+use crate::models::client::Client;
 use crate::transaction::{Transaction, TxTypes};
 use crate::{error, TransactionFeed};
-use log::{debug, trace};
+use log::{debug, info, trace};
 
+/// The main engine for processing transactions, making calls to clients, and ensuring that
+/// transactions are applied according to the rules of the system. Keeps a ledger as a record
+/// of withdrawals and deposits, calls appropriate validation functions, and iterates through
+/// a feed of all transactions until complete.
 #[derive(Default, Debug)]
 pub struct Processor {
     ledger: HashMap<u32, Transaction>,
 }
 
 impl Processor {
-    pub fn new() -> Self {
-        Self { ledger: HashMap::new() }
-    }
-
-    pub fn handle_transactions(consumer: TransactionFeed, clients: &mut Accounts) {
+    ///Associated function that self constructs and then iterates through the provided
+    /// transaction feed, handling transactions one by one and updating the client.
+    /// Erroneous csv records are skipped and errors are logged. Transactions are validated,
+    /// and if valid, processed only if the client is not locked.
+    /// # Deposits and Withdrawals
+    /// Duplicate deposits and withdrawals are ignored. Errors are logged and successful
+    /// transactions are added to the ledger
+    /// # Dispute Related Transactions
+    /// Dispute, Resolve, and Chargeback go through additional validation by Transaction.
+    /// If it passes, the client is updated and the disputed status is updated
+    /// # Panic
+    /// The system will panic if a dispute related transaction makes it to a deposit/withdrawal
+    /// path or vice versa. This is impossible, and there is no way to process this transaction
+    /// at this point, therefore it is a critical error.
+    /// Likewise, amounts are checked through the Transaction module. If an amount isn't present
+    /// where it should be, the system must panic because transaction screening is failing.
+    pub fn handle_transactions(consumer: TransactionFeed, clients: &mut ClientRepo) {
         let mut processor = Self { ..Default::default() };
         for transaction in consumer {
             match transaction {
@@ -83,7 +100,7 @@ impl Processor {
             Some(tx) => {
                 Processor::check_client_ids_match(tx.client, client.client)?;
                 Transaction::check_transaction_dispute_valid(resolving, tx.disputed)?;
-                Transaction::check_amount_is_valid(&tx.tx_type, tx.amount)?;
+                Transaction::check_transaction_is_disputable(&tx.tx_type, tx.amount)?;
                 debug!("Dispute related transaction is valid");
                 Ok(tx)
             }
@@ -117,7 +134,7 @@ impl Processor {
                 }
                 _ => panic!(
                     "System error, unreachable line. Non-dispute related transactions\
-                must be handled before here."
+                    must be handled before here."
                 ),
             }
         }
@@ -152,8 +169,8 @@ impl Processor {
                 };
             }
         }
-        debug!("Dispute related transaction successfully handled");
-        trace!("Dispute related transaction is: {:?}", transaction);
+        //logging info here in absense of a ledger
+        info!("Dispute related transaction successfully handled: {:?}", transaction);
         Ok(())
     }
 }

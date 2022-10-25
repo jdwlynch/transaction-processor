@@ -4,6 +4,7 @@ use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
 use serde::Deserialize;
 
+/// Types of transactions. See the README for details.
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum TxTypes {
@@ -14,27 +15,36 @@ pub enum TxTypes {
     Chargeback,
 }
 
+///Associated functions that validate and format transactions according to the rules of the
+/// transaction-engine. Provides a dto to serialize transactions into.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub struct Transaction {
     #[serde(rename = "type")]
     pub tx_type: TxTypes,
+    /// Unique client identification number
     pub client: u16,
     #[serde(rename = "tx")]
+    /// Unique transaction number, or ID of transaction related to a dispute
     pub tx_id: u32,
+    /// Amounts are not present with dispute related transactions
     pub amount: Option<Decimal>,
+    /// Disputed is set by the transaction-engine, so it is defaulted when serializing
     #[serde(skip)]
     pub disputed: bool,
 }
 
 impl Transaction {
+    /// Checks that the transaction is valid and trims amount to 4 decimal places using
+    /// rust_decimal .round_dp(). Amounts must be positive and only presenton deposits
+    /// or withdrawals.
     pub fn validate_transaction(amount: &mut Option<Decimal>, tx_type: &TxTypes) -> Result<(), error::Error> {
         match tx_type {
             TxTypes::Deposit | TxTypes::Withdrawal => {
                 trace!("Deposit or withdrawal detected, calling validate: {:?}", tx_type);
                 Self::validate_deposit_withdrawal_structure(amount)
             }
-            _ => {
+            TxTypes::Dispute | TxTypes::Resolve | TxTypes::Chargeback => {
                 trace!("Dispute related transaction detected, calling validate: {:?}", tx_type);
                 Self::validate_dispute_related_structure(amount)
             }
@@ -67,6 +77,11 @@ impl Transaction {
         }
     }
 
+    ///Called once a transactions format is confirmed to be valid. Takes the disputed status of the
+    /// transaction related to the dispute, and whether the current transaction is resolving that
+    /// transaction or not. If resolving is true, the transaction must be disputed. We can't
+    /// resolve an undisputed transaction. Likewise, if resolving is false, the transaction can't
+    /// must be undisputed. We can't dispute a transaction already being disputed.
     pub fn check_transaction_dispute_valid(tx_resolving: bool, ledger_disputed: bool) -> Result<(), error::Error> {
         if tx_resolving != ledger_disputed {
             Err(error::Error::Transaction(String::from(
@@ -83,8 +98,11 @@ impl Transaction {
             Ok(())
         }
     }
-
-    pub fn check_amount_is_valid(tx_type: &TxTypes, amount: Option<Decimal>) -> Result<(), error::Error> {
+    ///Only deposits with valid amounts may be disputed.
+    ///# Panics
+    /// If the ledger has a deposit that doesn't have a value, the system must panic. The system
+    /// is not keeping track of transactions, and data is being lost, which is a serious error.
+    pub fn check_transaction_is_disputable(tx_type: &TxTypes, amount: Option<Decimal>) -> Result<(), error::Error> {
         match tx_type {
             TxTypes::Deposit => {
                 if amount.is_some() {

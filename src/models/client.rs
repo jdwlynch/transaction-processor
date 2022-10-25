@@ -1,36 +1,17 @@
 use crate::error;
-use log::{debug, trace};
+use log::trace;
 use rust_decimal::prelude::*;
 use serde::Serialize;
-use std::collections::HashMap;
 
-#[derive(Default, Debug)]
-pub struct Accounts {
-    pub clients: HashMap<u16, Client>,
-}
-
-impl Accounts {
-    pub fn new() -> Self {
-        Self { clients: HashMap::new() }
-    }
-    pub fn get_client(&mut self, id: u16) -> Result<&mut Client, error::Error> {
-        let client = self.clients.entry(id).or_insert_with(|| Client::new(id));
-        if client.locked {
-            return Err(error::Error::Account(format!("Client {} is locked", client.client)));
-        } else {
-            debug!("[!] Client {} returned from get_client", client.client);
-            Ok(client)
-        }
-    }
-}
-
+///Holds all account details for a client, including funds, allocation, id, and status (locked)
+/// See the readme for rules on how these fields are set and interact.
 #[derive(Default, Debug, Serialize)]
 pub struct Client {
     pub client: u16,
     available: Decimal,
     held: Decimal,
     total: Decimal,
-    locked: bool,
+    pub locked: bool,
 }
 
 impl Client {
@@ -40,6 +21,7 @@ impl Client {
             ..Default::default()
         }
     }
+    ///Add money to the account
     pub fn deposit(&mut self, amount: Decimal) {
         self.total += amount;
         self.available += amount;
@@ -51,6 +33,7 @@ impl Client {
             self.available
         );
     }
+    ///Withdraw money from the account if there are sufficient funds
     pub fn withdraw(&mut self, amount: Decimal) -> Result<(), error::Error> {
         if amount <= self.available {
             self.total -= amount;
@@ -64,13 +47,14 @@ impl Client {
             );
             Ok(())
         } else {
-            Err(error::Error::Account(format!(
+            Err(error::Error::Client(format!(
                 "Insufficient funds for client {}. \
                 {} requested, {} available",
                 self.client, amount, self.available
             )))
         }
     }
+    ///Hold disputed funds removing them from the available balance
     pub fn dispute(&mut self, amount: Decimal) {
         self.available -= amount;
         self.held += amount;
@@ -82,8 +66,13 @@ impl Client {
             self.held
         );
     }
+    ///Resolve a dispute, releasing the funds from held to available
+    ///# Panics
+    /// If less funds are held than are supposed to be resolved, the application must panic.
+    /// This means funds are being leaked somewhere and there is a malfunction. This should be
+    /// impossible.
     pub fn resolve(&mut self, amount: Decimal) {
-        if self.held < amount {
+        if self.held >= amount {
             //This should be impossible. The ledger is malfunctioning, so the system can't be trusted
             panic!(
                 "System error on client {}. Trying to resolve but amount: {}\
@@ -101,6 +90,11 @@ impl Client {
             self.held
         );
     }
+    ///Charge back a dispute, release funds from held and discharging them (subtract from total)
+    ///# Panics
+    /// If less funds are held than are supposed to be charged back, the application must panic.
+    /// This means funds are being leaked somewhere and there is a malfunction. This should be
+    /// impossible.
     pub fn chargeback(&mut self, amount: Decimal) {
         if self.held < amount {
             //This should be impossible. The ledger is malfunctioning, so the system can't be trusted
