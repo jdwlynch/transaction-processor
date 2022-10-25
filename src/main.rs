@@ -15,9 +15,7 @@ use std::ffi::OsString;
 
 fn get_first_arg() -> Result<OsString, error::Error> {
     match env::args_os().nth(1) {
-        None => Err(error::Error::InvalidArgument(String::from(
-            "No argument found",
-        ))),
+        None => Err(error::Error::InvalidArgument(String::from("No argument found"))),
         Some(file_path) => Ok(file_path),
     }
 }

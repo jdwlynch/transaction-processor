@@ -28,54 +28,34 @@ pub struct Transaction {
 }
 
 impl Transaction {
-    pub fn validate_transaction(
-        amount: &mut Option<Decimal>,
-        tx_type: &TxTypes,
-    ) -> Result<(), error::Error> {
+    pub fn validate_transaction(amount: &mut Option<Decimal>, tx_type: &TxTypes) -> Result<(), error::Error> {
         match tx_type {
             TxTypes::Deposit | TxTypes::Withdrawal => {
-                trace!(
-                    "Deposit or withdrawal detected, calling validate: {:?}",
-                    tx_type
-                );
+                trace!("Deposit or withdrawal detected, calling validate: {:?}", tx_type);
                 Self::validate_deposit_withdrawal_structure(amount)
             }
             _ => {
-                trace!(
-                    "Dispute related transaction detected, calling validate: {:?}",
-                    tx_type
-                );
+                trace!("Dispute related transaction detected, calling validate: {:?}", tx_type);
                 Self::validate_dispute_related_structure(amount)
             }
         }
     }
 
-    fn validate_deposit_withdrawal_structure(
-        amount: &mut Option<Decimal>,
-    ) -> Result<(), error::Error> {
+    fn validate_deposit_withdrawal_structure(amount: &mut Option<Decimal>) -> Result<(), error::Error> {
         if let Some(tx_amount) = amount {
             if tx_amount < &mut dec!(0) {
-                Err(error::Error::Transaction(String::from(
-                    "Amount must be a positive number",
-                )))
+                Err(error::Error::Transaction(String::from("Amount must be a positive number")))
             } else {
                 *amount = Some(tx_amount.round_dp(4));
-                trace!(
-                    "withdrawal or deposit of {:?} successfully validated.",
-                    amount
-                );
+                trace!("withdrawal or deposit of {:?} successfully validated.", amount);
                 Ok(())
             }
         } else {
-            Err(error::Error::Transaction(String::from(
-                "Deposits and withdrawals require an amount.",
-            )))
+            Err(error::Error::Transaction(String::from("Deposits and withdrawals require an amount.")))
         }
     }
 
-    fn validate_dispute_related_structure(
-        amount: &mut Option<Decimal>,
-    ) -> Result<(), error::Error> {
+    fn validate_dispute_related_structure(amount: &mut Option<Decimal>) -> Result<(), error::Error> {
         if amount.is_some() {
             Err(error::Error::Transaction(String::from(
                 "Disputes, resolutions and \
@@ -87,10 +67,7 @@ impl Transaction {
         }
     }
 
-    pub fn check_transaction_dispute_valid(
-        tx_resolving: bool,
-        ledger_disputed: bool,
-    ) -> Result<(), error::Error> {
+    pub fn check_transaction_dispute_valid(tx_resolving: bool, ledger_disputed: bool) -> Result<(), error::Error> {
         if tx_resolving != ledger_disputed {
             Err(error::Error::Transaction(String::from(
                 "Cannot dispute a disputed transaction, \
@@ -107,17 +84,11 @@ impl Transaction {
         }
     }
 
-    pub fn check_amount_is_valid(
-        tx_type: &TxTypes,
-        amount: Option<Decimal>,
-    ) -> Result<(), error::Error> {
+    pub fn check_amount_is_valid(tx_type: &TxTypes, amount: Option<Decimal>) -> Result<(), error::Error> {
         match tx_type {
             TxTypes::Deposit => {
                 if amount.is_some() {
-                    debug!(
-                        "A deposit is being disputed or resolved for a value of {:?}",
-                        amount
-                    );
+                    debug!("A deposit is being disputed or resolved for a value of {:?}", amount);
                     Ok(())
                 } else {
                     //This should be impossible. The ledger is malfunctioning, so the system can't be trusted

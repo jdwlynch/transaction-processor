@@ -13,15 +13,11 @@ pub struct Processor {
 
 impl Processor {
     pub fn new() -> Self {
-        Self {
-            ledger: HashMap::new(),
-        }
+        Self { ledger: HashMap::new() }
     }
 
     pub fn handle_transactions(consumer: TransactionFeed, clients: &mut Accounts) {
-        let mut processor = Self {
-            ..Default::default()
-        };
+        let mut processor = Self { ..Default::default() };
         for transaction in consumer {
             match transaction {
                 Err(err) => {
@@ -30,9 +26,7 @@ impl Processor {
                 }
                 Ok(mut tx) => {
                     trace!("[!] transaction parsed = {:?}", tx);
-                    if let Err(err) = Transaction::validate_transaction(&mut tx.amount, &tx.tx_type)
-                    /*processor.check_transaction(&mut tx)*/
-                    {
+                    if let Err(err) = Transaction::validate_transaction(&mut tx.amount, &tx.tx_type) {
                         error!("[!] Error validating transactions: {:?}", err);
                         continue;
                     }
@@ -55,29 +49,18 @@ impl Processor {
                 if let Err(err) = self.handle_deposits_withdrawals(&mut transaction, client) {
                     error!("[!] Error processing deposit or withdrawal: {}", err);
                 } else {
-                    debug!(
-                        "Successful transaction. Inserting into ledger: {:?}",
-                        transaction
-                    );
+                    debug!("Successful transaction. Inserting into ledger: {:?}", transaction);
                     self.ledger.insert(transaction.tx_id, transaction);
                 }
             }
             TxTypes::Dispute | TxTypes::Resolve | TxTypes::Chargeback => {
-                debug!(
-                    "Found dispute related transaction: {:?}",
-                    transaction.tx_type
-                );
+                debug!("Found dispute related transaction: {:?}", transaction.tx_type);
                 //resolve and chargeback resolve disputed transactions
                 trace!("Type of transaction checked is: {:?}", transaction.tx_type);
                 let resolving = transaction.tx_type != TxTypes::Dispute;
                 trace!("Resolving found to be: {}", resolving);
-                if let Err(err) =
-                    self.handle_disputed_transaction(client, &mut transaction, resolving)
-                {
-                    error!(
-                        "[!] Error handling a dispute related transaction: {:?}",
-                        err
-                    );
+                if let Err(err) = self.handle_disputed_transaction(client, &mut transaction, resolving) {
+                    error!("[!] Error handling a dispute related transaction: {:?}", err);
                 }
             }
         };
@@ -95,12 +78,7 @@ impl Processor {
         }
     }
 
-    fn get_disputed_transaction(
-        &mut self,
-        client: &Client,
-        tx_id: u32,
-        resolving: bool,
-    ) -> Result<&mut Transaction, error::Error> {
+    fn get_disputed_transaction(&mut self, client: &Client, tx_id: u32, resolving: bool) -> Result<&mut Transaction, error::Error> {
         match self.ledger.get_mut(&tx_id) {
             Some(tx) => {
                 Processor::check_client_ids_match(tx.client, client.client)?;
@@ -117,26 +95,13 @@ impl Processor {
         }
     }
 
-    fn handle_deposits_withdrawals(
-        &self,
-        transaction: &mut Transaction,
-        client: &mut Client,
-    ) -> Result<(), error::Error> {
+    fn handle_deposits_withdrawals(&self, transaction: &mut Transaction, client: &mut Client) -> Result<(), error::Error> {
         if self.ledger.contains_key(&transaction.tx_id) {
-            Err(error::Error::Transaction(String::from(
-                "Duplicate transaction",
-            )))
+            Err(error::Error::Transaction(String::from("Duplicate transaction")))
         } else {
             //Impossible as amount is checked in validators, so in the absence of a dto, use .expect.
-            let amount = transaction
-                .amount
-                .expect("System error, amount check failed.")
-                .round_dp(4);
-            trace!(
-                "Amount is : {}, and Tx amount is: {}",
-                amount,
-                transaction.amount.unwrap()
-            );
+            let amount = transaction.amount.expect("System error, amount check failed.").round_dp(4);
+            trace!("Amount is : {}, and Tx amount is: {}", amount, transaction.amount.unwrap());
             match transaction.tx_type {
                 TxTypes::Deposit => {
                     client.deposit(amount);
@@ -158,19 +123,9 @@ impl Processor {
         }
     }
 
-    fn handle_disputed_transaction(
-        &mut self,
-        client: &mut Client,
-        transaction: &mut Transaction,
-        resolving: bool,
-    ) -> Result<(), error::Error> {
+    fn handle_disputed_transaction(&mut self, client: &mut Client, transaction: &mut Transaction, resolving: bool) -> Result<(), error::Error> {
         match self.get_disputed_transaction(client, transaction.tx_id, resolving) {
-            Err(err) => {
-                return Err(error::Error::Transaction(format!(
-                    "Error validating dispute: {}",
-                    err
-                )))
-            }
+            Err(err) => return Err(error::Error::Transaction(format!("Error validating dispute: {}", err))),
             Ok(tx) => {
                 trace!("Found disputed transaction: {:?}", tx);
                 //Impossible as amount is checked in validators, so in the absence of a dto, use .expect.
@@ -191,8 +146,8 @@ impl Processor {
                     //This function is called as a fall-through of transaction parser that handles
                     //all other cases. This should be impossible, and if reached is a critical bug.
                     _ => panic!(
-                        "System error, unreachable line. Non-dispute related transactions\
-                must be handled before here."
+                        "System error, unreachable line. Non-dispute related \
+                        transactions must be handled before here."
                     ),
                 };
             }

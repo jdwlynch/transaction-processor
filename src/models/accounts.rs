@@ -11,17 +11,12 @@ pub struct Accounts {
 
 impl Accounts {
     pub fn new() -> Self {
-        Self {
-            clients: HashMap::new(),
-        }
+        Self { clients: HashMap::new() }
     }
     pub fn get_client(&mut self, id: u16) -> Result<&mut Client, error::Error> {
         let client = self.clients.entry(id).or_insert_with(|| Client::new(id));
         if client.locked {
-            return Err(error::Error::Account(format!(
-                "Client {} is locked",
-                client.client
-            )));
+            return Err(error::Error::Account(format!("Client {} is locked", client.client)));
         } else {
             debug!("[!] Client {} returned from get_client", client.client);
             Ok(client)
