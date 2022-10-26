@@ -124,3 +124,28 @@ impl Transaction {
         }
     }
 }
+
+//pub fn validate_transaction(amount: &mut Option<Decimal>, tx_type: &TxTypes)
+// pub fn check_transaction_dispute_valid(tx_resolving: bool, ledger_disputed: bool)
+//pub fn check_transaction_is_disputable(tx_type: &TxTypes, amount: Option<Decimal>)
+
+#[cfg(test)]
+mod tests {
+    use rust_decimal::Decimal;
+    //use super::*;
+    //use crate::transaction::Transaction;
+    use rust_decimal_macros::dec;
+    use crate::error;
+    use crate::error::Error;
+    use crate::transaction::{Transaction, TxTypes};
+    use assert_matches::assert_matches;
+
+    #[test]
+    fn is_disputable() {
+        let mut amount: Option<Decimal> = Some(Decimal::new(1, 4));
+        let result: Result<(), error::Error> = Transaction::validate_transaction(& mut amount, &TxTypes::Deposit);
+-        assert_matches!(Ok(_), result);
+    }
+
+
+}

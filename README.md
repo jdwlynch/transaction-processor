@@ -80,4 +80,4 @@ Taking this forward as if it were a large scale production system, I would consi
 * Improved explicit test names and more focused test files
 * Add a unique ID to every transaction and include dispute related transactions in the ledger
 
-Overall this was a fun, and enlightening project. The power of Rust is incredible, and coming from C++ very much appreciated.
+Overall this was a fun, and enlightening project. The power of Rust is incredible, and coming from C++ that power and security is very much appreciated.
