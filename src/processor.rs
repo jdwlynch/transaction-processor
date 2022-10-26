@@ -100,7 +100,7 @@ impl Processor {
             Some(tx) => {
                 Processor::check_client_ids_match(tx.client, client.client)?;
                 Transaction::check_transaction_dispute_valid(resolving, tx.disputed)?;
-                Transaction::check_transaction_is_disputable(&tx.tx_type, tx.amount)?;
+                Transaction::check_transaction_is_disputable(tx.amount, &tx.tx_type)?;
                 debug!("Dispute related transaction is valid");
                 Ok(tx)
             }

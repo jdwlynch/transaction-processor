@@ -26,3 +26,30 @@ impl ClientRepo {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::ClientRepo;
+
+    #[test]
+    fn get_new_client() {
+        let mut repo = ClientRepo::new();
+        let result = match repo.get_client(1){
+            Ok(_) => true,
+            Err(_) => false
+        };
+        assert!(result);
+    }
+
+    #[test]
+    fn client_locked() {
+        let mut repo = ClientRepo::new();
+        let client = repo.get_client(1).unwrap();
+        client.locked = true;
+        let result = match repo.get_client(1){
+            Ok(_) => true,
+            Err(_) => false
+        };
+        assert!(!result);
+    }
+}

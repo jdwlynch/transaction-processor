@@ -67,10 +67,7 @@ impl Transaction {
 
     fn validate_dispute_related_structure(amount: &mut Option<Decimal>) -> Result<(), error::Error> {
         if amount.is_some() {
-            Err(error::Error::Transaction(String::from(
-                "Disputes, resolutions and \
-                            chargebacks shouldn't have amounts",
-            )))
+            Err(error::Error::Transaction(String::from("Disputes, resolutions and chargebacks shouldn't have amounts")))
         } else {
             debug!("Dispute related transaction ok.");
             Ok(())
@@ -84,17 +81,11 @@ impl Transaction {
     /// must be undisputed. We can't dispute a transaction already being disputed.
     pub fn check_transaction_dispute_valid(tx_resolving: bool, ledger_disputed: bool) -> Result<(), error::Error> {
         if tx_resolving != ledger_disputed {
-            Err(error::Error::Transaction(String::from(
-                "Cannot dispute a disputed transaction, \
-                        or resolve an undisputed transaction.",
-            )))
+            Err(error::Error::Transaction(String::from("Cannot dispute a disputed transaction, \
+                        or resolve an undisputed transaction.")))
         } else {
-            trace!(
-                "Dispute related transaction ok. The targeted transaction disputed = {} \
-            and the new transaction has resolving = {}",
-                ledger_disputed,
-                tx_resolving
-            );
+            trace!("Dispute related transaction ok. The targeted transaction disputed = {} \
+            and the new transaction has resolving = {}", ledger_disputed, tx_resolving);
             Ok(())
         }
     }
@@ -102,50 +93,234 @@ impl Transaction {
     ///# Panics
     /// If the ledger has a deposit that doesn't have a value, the system must panic. The system
     /// is not keeping track of transactions, and data is being lost, which is a serious error.
-    pub fn check_transaction_is_disputable(tx_type: &TxTypes, amount: Option<Decimal>) -> Result<(), error::Error> {
+    pub fn check_transaction_is_disputable(amount: Option<Decimal>, tx_type: &TxTypes) -> Result<(), error::Error> {
         match tx_type {
             TxTypes::Deposit => {
-                if amount.is_some() {
-                    debug!("A deposit is being disputed or resolved for a value of {:?}", amount);
-                    Ok(())
-                } else {
-                    //This should be impossible. The ledger is malfunctioning, so the system can't be trusted
-                    panic!(
-                        "System error, ledger shows a deposit \
-                                with no amount"
-                    );
-                }
+                amount.expect("System error, ledger shows a deposit with no amount");
+                debug!("A deposit is being disputed or resolved for a value of {:?}", amount);
+                Ok(())
+
             }
-            _ => Err(error::Error::Transaction(format!(
-                "Trying to dispute or resolve a {:?}. \
-                        Only Deposits are valid targets.",
-                tx_type
-            ))),
+            _ => Err(error::Error::Transaction(format!("Trying to dispute or resolve a {:?}. Only Deposits are valid targets.", tx_type))),
         }
     }
 }
 
-//pub fn validate_transaction(amount: &mut Option<Decimal>, tx_type: &TxTypes)
-// pub fn check_transaction_dispute_valid(tx_resolving: bool, ledger_disputed: bool)
-//pub fn check_transaction_is_disputable(tx_type: &TxTypes, amount: Option<Decimal>)
-
 #[cfg(test)]
 mod tests {
     use rust_decimal::Decimal;
-    //use super::*;
-    //use crate::transaction::Transaction;
-    use rust_decimal_macros::dec;
-    use crate::error;
-    use crate::error::Error;
     use crate::transaction::{Transaction, TxTypes};
-    use assert_matches::assert_matches;
 
     #[test]
-    fn is_disputable() {
-        let mut amount: Option<Decimal> = Some(Decimal::new(1, 4));
-        let result: Result<(), error::Error> = Transaction::validate_transaction(& mut amount, &TxTypes::Deposit);
--        assert_matches!(Ok(_), result);
+    fn deposit_is_disputable() {
+        let amount: Option<Decimal> = Some(Decimal::new(10000, 4));
+        let result = match Transaction::check_transaction_is_disputable( amount, &TxTypes::Deposit,){
+            Ok(_) => true,
+            Err(_) => false
+        };
+        assert!(result);
     }
 
+    #[test]
+    fn withdraw_not_disputable() {
+        let amount: Option<Decimal> = Some(Decimal::new(10000, 4));
+        let result = match Transaction::check_transaction_is_disputable(amount, &TxTypes::Withdrawal){
+            Ok(_) => true,
+            Err(_) => false
+        };
+        assert!(!result);
+    }
 
+    #[test]
+    fn dispute_not_disputable() {
+        let amount: Option<Decimal> = Some(Decimal::new(10000, 4));
+        let result = match Transaction::check_transaction_is_disputable(amount, &TxTypes::Dispute){
+            Ok(_) => true,
+            Err(_) => false
+        };
+        assert!(!result);
+    }
+
+    #[test]
+    fn resolve_not_disputable() {
+        let amount: Option<Decimal> = Some(Decimal::new(10000, 4));
+        let result = match Transaction::check_transaction_is_disputable(amount, &TxTypes::Resolve){
+            Ok(_) => true,
+            Err(_) => false
+        };
+        assert!(!result);
+    }
+
+    #[test]
+    fn chargeback_not_disputable() {
+        let amount: Option<Decimal> = Some(Decimal::new(10000, 4));
+        let result = match Transaction::check_transaction_is_disputable(amount, &TxTypes::Chargeback){
+            Ok(_) => true,
+            Err(_) => false
+        };
+        assert!(!result);
+    }
+
+    #[test]
+    #[should_panic(expected = "System error, ledger shows a deposit with no amount")]
+    fn valid_dispute_with_no_amount() {
+        let amount: Option<Decimal> = None;
+        let _result = Transaction::check_transaction_is_disputable(amount, &TxTypes::Deposit);
+    }
+
+    #[test]
+    fn resolving_disputed_transaction() {
+        let result = match Transaction::check_transaction_dispute_valid(true, true){
+            Ok(_) => true,
+            Err(_) => false
+        };
+        assert!(result);
+    }
+
+    #[test]
+    fn disputing_undisputed_transaction() {
+        let result = match Transaction::check_transaction_dispute_valid(true, true){
+            Ok(_) => true,
+            Err(_) => false
+        };
+        assert!(result);
+    }
+
+    #[test]
+    fn resolving_undisputed_transaction() {
+        let result = match Transaction::check_transaction_dispute_valid(true, false){
+            Ok(_) => true,
+            Err(_) => false
+        };
+        assert!(!result);
+    }
+
+    #[test]
+    fn disputing_disputed_transaction() {
+        let result = match Transaction::check_transaction_dispute_valid(false, true){
+            Ok(_) => true,
+            Err(_) => false
+        };
+        assert!(!result);
+    }
+
+    #[test]
+    fn valid_deposit() {
+        let mut amount: Option<Decimal> = Some(Decimal::new(10000, 4));
+        let result = match Transaction::validate_transaction(& mut amount, &TxTypes::Deposit){
+            Ok(_) => true,
+            Err(_) => false
+        };
+        assert!(result);
+    }
+
+    #[test]
+    fn valid_withdrawal() {
+        let mut amount: Option<Decimal> = Some(Decimal::new(10000, 4));
+        let result = match Transaction::validate_transaction(& mut amount, &TxTypes::Withdrawal){
+            Ok(_) => true,
+            Err(_) => false
+        };
+        assert!(result);
+    }
+
+    #[test]
+    fn negative_deposit() {
+        let mut amount: Option<Decimal> = Some(Decimal::new(-10000, 4));
+        let result = match Transaction::validate_transaction(& mut amount, &TxTypes::Deposit){
+            Ok(_) => true,
+            Err(_) => false
+        };
+        assert!(!result);
+    }
+
+    #[test]
+    fn negative_withdrawal() {
+        let mut amount: Option<Decimal> = Some(Decimal::new(-10000, 4));
+        let result = match Transaction::validate_transaction(& mut amount, &TxTypes::Withdrawal){
+            Ok(_) => true,
+            Err(_) => false
+        };
+        assert!(!result);
+    }
+
+    #[test]
+    fn missing_amount_deposit(){
+        let mut amount: Option<Decimal> = None;
+        let result = match Transaction::validate_transaction(& mut amount, &TxTypes::Deposit){
+            Ok(_) => true,
+            Err(_) => false
+        };
+        assert!(!result);
+    }
+
+    #[test]
+    fn missing_amount_withdrawal(){
+        let mut amount: Option<Decimal> = None;
+        let result = match Transaction::validate_transaction(& mut amount, &TxTypes::Withdrawal){
+            Ok(_) => true,
+            Err(_) => false
+        };
+        assert!(!result);
+    }
+
+    #[test]
+    fn valid_dispute() {
+        let mut amount: Option<Decimal> = None;
+        let result = match Transaction::validate_transaction(& mut amount, &TxTypes::Dispute){
+            Ok(_) => true,
+            Err(_) => false
+        };
+        assert!(result);
+    }
+
+    #[test]
+    fn valid_resolve() {
+        let mut amount: Option<Decimal> = None;
+        let result = match Transaction::validate_transaction(& mut amount, &TxTypes::Resolve){
+            Ok(_) => true,
+            Err(_) => false
+        };
+        assert!(result);
+    }
+
+    #[test]
+    fn valid_chargeback() {
+        let mut amount: Option<Decimal> = None;
+        let result = match Transaction::validate_transaction(& mut amount, &TxTypes::Chargeback){
+            Ok(_) => true,
+            Err(_) => false
+        };
+        assert!(result);
+    }
+
+    #[test]
+    fn amount_with_dispute() {
+        let mut amount: Option<Decimal> = Some(Decimal::new(-10000, 4));
+        let result = match Transaction::validate_transaction(& mut amount, &TxTypes::Dispute){
+            Ok(_) => true,
+            Err(_) => false
+        };
+        assert!(!result);
+    }
+
+    #[test]
+    fn amount_with_resolve() {
+        let mut amount: Option<Decimal> = Some(Decimal::new(-10000, 4));
+        let result = match Transaction::validate_transaction(& mut amount, &TxTypes::Resolve){
+            Ok(_) => true,
+            Err(_) => false
+        };
+        assert!(!result);
+    }
+
+    #[test]
+    fn amount_with_chargeback() {
+        let mut amount: Option<Decimal> = Some(Decimal::new(-10000, 4));
+        let result = match Transaction::validate_transaction(& mut amount, &TxTypes::Chargeback){
+            Ok(_) => true,
+            Err(_) => false
+        };
+        assert!(!result);
+    }
 }

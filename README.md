@@ -72,6 +72,7 @@ Taking this forward as if it were a large scale production system, I would consi
 
 * A pipeline to execute auditing, clippy checks, documentation checks, unit and integration testing
 * Robust unit testing (input-output testing finishes the challenge, but is not maintainable)
+* Integration style testing of ```pub fn handle_transactions()``` with mock transaction inputs 
 * Asynchronously generating transactions actioned by client hash matching transaction processors (similar to Kafka) to remove the I/O bottleneck at scale
 * Creating traits, at least for the transaction feed such that any source of transactions could implement the interface
 * More familiarity with Rust design patterns as the processor became messier due to design errors which didn't agree with the borrow checker
