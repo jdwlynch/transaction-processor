@@ -140,10 +140,7 @@ mod tests {
         let mut client = Client::new(1);
         let amount=Decimal::new(10000, 4);
         let zero = Decimal::new(00000, 4);
-        let result = match client.withdraw(amount){
-            Ok(_) => true,
-            Err(_) => false
-        };
+        let result = client.withdraw(amount).is_ok();
         assert!(!result);
         assert_eq!(client.total, zero);
         assert_eq!(client.available, zero);
@@ -153,10 +150,7 @@ mod tests {
     fn insufficient_funds_withdrawal() {
         let mut client = Client::new(1);
         let amount=Decimal::new(10000, 4);
-        let result = match client.withdraw(amount){
-            Ok(_) => true,
-            Err(_) => false
-        };
+        let result = client.withdraw(amount).is_ok();
         assert!(!result);
     }
 

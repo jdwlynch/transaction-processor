@@ -114,50 +114,35 @@ mod tests {
     #[test]
     fn deposit_is_disputable() {
         let amount: Option<Decimal> = Some(Decimal::new(10000, 4));
-        let result = match Transaction::check_transaction_is_disputable( amount, &TxTypes::Deposit,){
-            Ok(_) => true,
-            Err(_) => false
-        };
+        let result = Transaction::check_transaction_is_disputable( amount, &TxTypes::Deposit).is_ok();
         assert!(result);
     }
 
     #[test]
     fn withdraw_not_disputable() {
         let amount: Option<Decimal> = Some(Decimal::new(10000, 4));
-        let result = match Transaction::check_transaction_is_disputable(amount, &TxTypes::Withdrawal){
-            Ok(_) => true,
-            Err(_) => false
-        };
+        let result = Transaction::check_transaction_is_disputable( amount, &TxTypes::Withdrawal).is_ok();
         assert!(!result);
     }
 
     #[test]
     fn dispute_not_disputable() {
         let amount: Option<Decimal> = Some(Decimal::new(10000, 4));
-        let result = match Transaction::check_transaction_is_disputable(amount, &TxTypes::Dispute){
-            Ok(_) => true,
-            Err(_) => false
-        };
+        let result = Transaction::check_transaction_is_disputable( amount, &TxTypes::Dispute).is_ok();
         assert!(!result);
     }
 
     #[test]
     fn resolve_not_disputable() {
         let amount: Option<Decimal> = Some(Decimal::new(10000, 4));
-        let result = match Transaction::check_transaction_is_disputable(amount, &TxTypes::Resolve){
-            Ok(_) => true,
-            Err(_) => false
-        };
+        let result = Transaction::check_transaction_is_disputable( amount, &TxTypes::Resolve).is_ok();
         assert!(!result);
     }
 
     #[test]
     fn chargeback_not_disputable() {
         let amount: Option<Decimal> = Some(Decimal::new(10000, 4));
-        let result = match Transaction::check_transaction_is_disputable(amount, &TxTypes::Chargeback){
-            Ok(_) => true,
-            Err(_) => false
-        };
+        let result = Transaction::check_transaction_is_disputable( amount, &TxTypes::Chargeback).is_ok();
         assert!(!result);
     }
 
@@ -170,157 +155,109 @@ mod tests {
 
     #[test]
     fn resolving_disputed_transaction() {
-        let result = match Transaction::check_transaction_dispute_valid(true, true){
-            Ok(_) => true,
-            Err(_) => false
-        };
+        let result = Transaction::check_transaction_dispute_valid(true, true).is_ok();
         assert!(result);
     }
 
     #[test]
     fn disputing_undisputed_transaction() {
-        let result = match Transaction::check_transaction_dispute_valid(true, true){
-            Ok(_) => true,
-            Err(_) => false
-        };
+        let result = Transaction::check_transaction_dispute_valid(true, true).is_ok();
         assert!(result);
     }
 
     #[test]
     fn resolving_undisputed_transaction() {
-        let result = match Transaction::check_transaction_dispute_valid(true, false){
-            Ok(_) => true,
-            Err(_) => false
-        };
+        let result = Transaction::check_transaction_dispute_valid(true, false).is_ok();
         assert!(!result);
     }
 
     #[test]
     fn disputing_disputed_transaction() {
-        let result = match Transaction::check_transaction_dispute_valid(false, true){
-            Ok(_) => true,
-            Err(_) => false
-        };
+        let result =  Transaction::check_transaction_dispute_valid(false, true).is_ok();
         assert!(!result);
     }
 
     #[test]
     fn valid_deposit() {
         let mut amount: Option<Decimal> = Some(Decimal::new(10000, 4));
-        let result = match Transaction::validate_transaction(& mut amount, &TxTypes::Deposit){
-            Ok(_) => true,
-            Err(_) => false
-        };
+        let result = Transaction::validate_transaction(& mut amount, &TxTypes::Deposit).is_ok();
         assert!(result);
     }
 
     #[test]
     fn valid_withdrawal() {
         let mut amount: Option<Decimal> = Some(Decimal::new(10000, 4));
-        let result = match Transaction::validate_transaction(& mut amount, &TxTypes::Withdrawal){
-            Ok(_) => true,
-            Err(_) => false
-        };
+        let result = Transaction::validate_transaction(& mut amount, &TxTypes::Withdrawal).is_ok();
         assert!(result);
     }
 
     #[test]
     fn negative_deposit() {
         let mut amount: Option<Decimal> = Some(Decimal::new(-10000, 4));
-        let result = match Transaction::validate_transaction(& mut amount, &TxTypes::Deposit){
-            Ok(_) => true,
-            Err(_) => false
-        };
+        let result = Transaction::validate_transaction(& mut amount, &TxTypes::Deposit).is_ok();
         assert!(!result);
     }
 
     #[test]
     fn negative_withdrawal() {
         let mut amount: Option<Decimal> = Some(Decimal::new(-10000, 4));
-        let result = match Transaction::validate_transaction(& mut amount, &TxTypes::Withdrawal){
-            Ok(_) => true,
-            Err(_) => false
-        };
+        let result = Transaction::validate_transaction(& mut amount, &TxTypes::Withdrawal).is_ok();
         assert!(!result);
     }
 
     #[test]
     fn missing_amount_deposit(){
         let mut amount: Option<Decimal> = None;
-        let result = match Transaction::validate_transaction(& mut amount, &TxTypes::Deposit){
-            Ok(_) => true,
-            Err(_) => false
-        };
+        let result = Transaction::validate_transaction(& mut amount, &TxTypes::Deposit).is_ok();
         assert!(!result);
     }
 
     #[test]
     fn missing_amount_withdrawal(){
         let mut amount: Option<Decimal> = None;
-        let result = match Transaction::validate_transaction(& mut amount, &TxTypes::Withdrawal){
-            Ok(_) => true,
-            Err(_) => false
-        };
+        let result = Transaction::validate_transaction(& mut amount, &TxTypes::Withdrawal).is_ok();
         assert!(!result);
     }
 
     #[test]
     fn valid_dispute() {
         let mut amount: Option<Decimal> = None;
-        let result = match Transaction::validate_transaction(& mut amount, &TxTypes::Dispute){
-            Ok(_) => true,
-            Err(_) => false
-        };
+        let result = Transaction::validate_transaction(& mut amount, &TxTypes::Dispute).is_ok();
         assert!(result);
     }
 
     #[test]
     fn valid_resolve() {
         let mut amount: Option<Decimal> = None;
-        let result = match Transaction::validate_transaction(& mut amount, &TxTypes::Resolve){
-            Ok(_) => true,
-            Err(_) => false
-        };
+        let result = Transaction::validate_transaction(& mut amount, &TxTypes::Resolve).is_ok();
         assert!(result);
     }
 
     #[test]
     fn valid_chargeback() {
         let mut amount: Option<Decimal> = None;
-        let result = match Transaction::validate_transaction(& mut amount, &TxTypes::Chargeback){
-            Ok(_) => true,
-            Err(_) => false
-        };
+        let result = Transaction::validate_transaction(& mut amount, &TxTypes::Chargeback).is_ok();
         assert!(result);
     }
 
     #[test]
     fn amount_with_dispute() {
         let mut amount: Option<Decimal> = Some(Decimal::new(-10000, 4));
-        let result = match Transaction::validate_transaction(& mut amount, &TxTypes::Dispute){
-            Ok(_) => true,
-            Err(_) => false
-        };
+        let result = Transaction::validate_transaction(& mut amount, &TxTypes::Dispute).is_ok();
         assert!(!result);
     }
 
     #[test]
     fn amount_with_resolve() {
         let mut amount: Option<Decimal> = Some(Decimal::new(-10000, 4));
-        let result = match Transaction::validate_transaction(& mut amount, &TxTypes::Resolve){
-            Ok(_) => true,
-            Err(_) => false
-        };
+        let result = Transaction::validate_transaction(& mut amount, &TxTypes::Resolve).is_ok();
         assert!(!result);
     }
 
     #[test]
     fn amount_with_chargeback() {
         let mut amount: Option<Decimal> = Some(Decimal::new(-10000, 4));
-        let result = match Transaction::validate_transaction(& mut amount, &TxTypes::Chargeback){
-            Ok(_) => true,
-            Err(_) => false
-        };
+        let result = Transaction::validate_transaction(& mut amount, &TxTypes::Chargeback).is_ok();
         assert!(!result);
     }
 }
