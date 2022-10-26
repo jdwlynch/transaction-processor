@@ -58,6 +58,7 @@ use client_repo::ClientRepo;
 use log::error;
 use std::env;
 use std::ffi::OsString;
+use env_logger::Env;
 
 ///Gets the first command line argument and returns it, or an error::Error if no arg is found.
 fn get_first_arg() -> Result<OsString, error::Error> {
@@ -81,7 +82,7 @@ fn get_transaction_feed() -> Result<TransactionFeed, error::Error> {
 }
 
 fn main() -> Result<(), error::Error> {
-    env_logger::init();
+    env_logger::Builder::from_env(Env::default().default_filter_or("off")).init();
     let transaction_feed = match get_transaction_feed() {
         Err(err) => {
             error!("[!] Fatal error opening transaction feed: {:?}", err);
